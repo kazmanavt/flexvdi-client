@@ -331,27 +331,56 @@ static gint client_conf_handle_options(GApplication * gapp, GVariantDict * opts,
     return -1;
 }
 
+gchar * cc_params_has(const gchar * params, char * name) {
+    return g_strstr_len(params, -1, name);
+}
 
-void client_conf_get_options_from_response(ClientConf * conf, JsonObject * params) {
-    if (json_object_has_member(params, "enable_power_actions"))
-        conf->disable_power_actions |= !json_object_get_boolean_member(params, "enable_power_actions");
-    if (json_object_has_member(params, "enable_usb_redir"))
-        conf->disable_usbredir |= !json_object_get_boolean_member(params, "enable_usb_redir");
-    if (json_object_has_member(params, "enable_copy_paste_g2h"))
-        conf->disable_copy_from_guest |= !json_object_get_boolean_member(params, "enable_copy_paste_g2h");
-    if (json_object_has_member(params, "enable_copy_paste_h2g"))
-        conf->disable_paste_to_guest |= !json_object_get_boolean_member(params, "enable_copy_paste_h2g");
-    if (json_object_has_member(params, "enable_printing"))
-        conf->disable_printing |= !json_object_get_boolean_member(params, "enable_printing");
-    if (json_object_has_member(params, "enable_shared_folder"))
-        if (!json_object_get_boolean_member(params, "enable_shared_folder"))
-            g_clear_pointer(&conf->shared_folder, g_free);
-    if (json_object_has_member(params, "inactivity_timeout")) {
-        int timeout_from_manager = json_object_get_int_member(params, "inactivity_timeout");
-        if (conf->inactivity_timeout == 0 ||
-            (timeout_from_manager > 0 && timeout_from_manager < conf->inactivity_timeout))
-            conf->inactivity_timeout = timeout_from_manager;
-    }
+gboolean cc_params_get_boolean(const gchar * params, char * name) {
+    gchar * p = cc_params_has(params, name);
+    gchar * end = g_strstr_len(p, -1, "\n");
+    if (end)
+        p = g_strndup(p, end - p);
+    else
+        p = g_strdup(p);
+
+    gchar * val = g_utf8_strchr(p, -1, '=') + 1;
+    gint64 v = g_ascii_strtoll(val, 0, 10);
+
+    g_free(p);
+    return v;
+}
+
+gchar * cc_params_get_string(const gchar * params, char * name) {
+    gchar * p = cc_params_has(params, name);
+    if (!p)
+        return g_strdup("");
+    gchar * end = g_strstr_len(p, -1, "\n");
+    if (end)
+        p = g_strndup(p, end - p);
+    else
+        p = g_strdup(p);
+
+    gchar * val = g_utf8_strchr(p, -1, '=') + 1;
+    val = g_strdup(val);
+
+    g_free(p);
+    return val;
+}
+
+
+void client_conf_get_options_from_response(ClientConf * conf, JsonObject * params_obj) {
+    const gchar * params = json_object_get_string_member(params_obj, "as_file");
+
+    if (cc_params_has(params, "enable-usbredir"))
+        conf->disable_usbredir |= !cc_params_get_boolean(params, "enable-usbredir");
+    if (cc_params_has(params, "fullscreen"))
+        conf->fullscreen = cc_params_get_boolean(params, "fullscreen");
+    if (cc_params_has(params, "usb-filter"))
+	conf->usb_connect_filter = cc_params_get_string(params, "usb-filter");
+    if (cc_params_has(params, "enable-usb-autoshare"))
+        if (cc_params_get_boolean(params, "enable-usb-autoshare"))
+            conf->usb_auto_filter = cc_params_get_string(params, "usb-filter");
+
 }
 
 
@@ -414,16 +443,14 @@ static void parse_preferred_compression(SpiceSession * session, const gchar * va
 
 
 void client_conf_set_session_options(ClientConf * conf, SpiceSession * session) {
-    if (conf->proxy_uri && conf->proxy_uri[0])
-        g_object_set(session, "proxy", conf->proxy_uri, NULL);
     g_object_set(session, "enable-usbredir", !conf->disable_usbredir, NULL);
     if (!conf->disable_usbredir) {
         SpiceUsbDeviceManager * mgr = spice_usb_device_manager_get(session, NULL);
         if (mgr) {
-            if (conf->usb_auto_filter)
+            if (conf->usb_auto_filter) {
+                g_object_set(mgr, "auto-connect", TRUE, NULL);
                 g_object_set(mgr, "auto-connect-filter", conf->usb_auto_filter, NULL);
-            if (conf->usb_connect_filter)
-                g_object_set(mgr, "redirect-on-connect", conf->usb_connect_filter, NULL);
+            }
         } else {
             g_warning("USB redirection support not available");
         }

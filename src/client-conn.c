@@ -111,25 +111,63 @@ static void client_conn_finalize(GObject * obj) {
 }
 
 
-ClientConn * client_conn_new(ClientConf * conf, JsonObject * params) {
+gchar * params_has(const gchar * params, char * name) {
+    return g_strstr_len(params, -1, name);
+}
+
+gboolean params_get_boolean(const gchar * params, char * name) {
+    gchar * p = params_has(params, name);
+    gchar * end = g_strstr_len(p, -1, "\n");
+    if (end)
+        p = g_strndup(p, end - p);
+    else
+        p = g_strdup(p);
+
+    gchar * val = g_utf8_strchr(p, -1, '=') + 1;
+    gint64 v = g_ascii_strtoll(val, 0, 10);
+
+    g_free(p);
+    return v;
+}
+
+gchar * params_get_string(const gchar * params, char * name) {
+    gchar * p = params_has(params, name);
+    if (!p)
+        return g_strdup("");
+    gchar * end = g_strstr_len(p, -1, "\n");
+    if (end)
+        p = g_strndup(p, end - p);
+    else
+        p = g_strdup(p);
+
+    gchar * val = g_utf8_strchr(p, -1, '=') + 1;
+    val = g_strdup(val);
+
+    g_free(p);
+    return val;
+}
+
+ClientConn * client_conn_new(ClientConf * conf, JsonObject * params_obj) {
+    const gchar * params = json_object_get_string_member(params_obj, "as_file");
     ClientConn * conn = CLIENT_CONN(g_object_new(CLIENT_CONN_TYPE, NULL));
 
-    g_object_set(conn->session,
-                 "password", json_object_get_string_member(params, "spice_password"),
-                 NULL);
-    conn->use_ws = json_object_has_member(params, "use_ws") && (
-        json_object_get_boolean_member(params, "use_ws") ||
-        !g_strcmp0(json_object_get_string_member(params, "use_ws"), "true"));
+    g_object_set(conn->session, "password", params_get_string(params, "password"), NULL);
+    if (params_has(params, "proxy"))
+        g_object_set(conn->session, "proxy", params_get_string(params, "proxy"), NULL);
+    if (params_has(params, "enable-smartcard"))
+        g_object_set(conn->session, "enable-smartcard", params_get_boolean(params, "enable-smartcard"), NULL);
+
+    conn->use_ws = FALSE;
     if (conn->use_ws) {
-        conn->ws_host = g_strdup(json_object_get_string_member(params, "spice_address"));
-        const gchar * port = client_conf_get_port(conf);
-        conn->ws_port = g_strdup(port ? port : "443");
-        conn->ws_token = g_strdup(json_object_get_string_member(params, "spice_port"));
-        conn->soup = client_conf_get_soup_session(conf);
+        // conn->ws_host = g_strdup(json_object_get_string_member(params, "spice_address"));
+        // const gchar * port = client_conf_get_port(conf);
+        // conn->ws_port = g_strdup(port ? port : "443");
+        // conn->ws_token = g_strdup(json_object_get_string_member(params, "spice_port"));
+        // conn->soup = client_conf_get_soup_session(conf);
     } else {
         g_object_set(conn->session,
-                     "host", json_object_get_string_member(params, "spice_address"),
-                     "port", json_object_get_string_member(params, "spice_port"),
+                     "host", params_get_string(params, "host"),
+                     "port", params_get_string(params, "port"),
                      NULL);
     }
     client_conf_set_session_options(conf, conn->session);
