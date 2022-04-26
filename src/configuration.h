@@ -127,6 +127,7 @@ gboolean client_conf_get_fullscreen(ClientConf * conf);
 gchar ** client_conf_get_serial_params(ClientConf * conf);
 gboolean client_conf_get_disable_printing(ClientConf * conf);
 const gchar * client_conf_get_terminal_id(ClientConf * conf);
+const gchar * client_conf_get_local_ip(ClientConf * conf);
 gboolean client_conf_get_disable_copy_from_guest(ClientConf * conf);
 gboolean client_conf_get_disable_paste_to_guest(ClientConf * conf);
 gboolean client_conf_get_disable_power_actions(ClientConf * conf);

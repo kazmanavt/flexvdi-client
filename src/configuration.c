@@ -18,6 +18,10 @@
 */
 
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "configuration.h"
 #include "client-log.h"
 
@@ -39,6 +43,7 @@ struct _ClientConf {
     gchar * token;
     gchar * passfile;
     gchar * terminal_id;
+    gchar * local_ip;
     gchar * uri;
     gboolean kiosk_mode;
     // Session options
@@ -660,6 +665,28 @@ const gchar * client_conf_get_terminal_id(ClientConf * conf) {
     return conf->terminal_id;
 }
 
+const gchar * client_conf_get_local_ip(ClientConf * conf) {
+    if (!conf->local_ip) {
+        int sock = socket(AF_INET, SOCK_STREAM, 0);
+        if (sock != -1) {
+            struct sockaddr_in addr;
+            addr.sin_family = AF_INET;
+            addr.sin_port = htons(atoi(conf->port));
+            addr.sin_addr.s_addr = inet_addr(conf->host);
+            if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
+                struct sockaddr_in local;
+                socklen_t len = sizeof(local);
+                if (getsockname(sock, (struct sockaddr *)&local, &len) == 0) {
+                    conf->local_ip = inet_ntoa(local.sin_addr);
+                }
+            }
+            close (sock);
+        } else {
+            conf->local_ip = g_uuid_string_random();
+	}
+    }
+    return conf->local_ip;
+}
 
 void client_conf_set_host(ClientConf * conf, const gchar * host) {
     if (conf->kiosk_mode) return;
