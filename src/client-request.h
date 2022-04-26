@@ -54,6 +54,13 @@ ClientRequest * client_request_new(ClientConf * conf, const gchar * path,
 ClientRequest * client_request_new_with_data(ClientConf * conf, const gchar * path,
     const gchar * post_data, const gchar * loggable_post_data, ClientRequestCallback cb, gpointer user_data);
 /*
+ * client_request_new_with_data2
+ * 
+ * Create a new PUT request, with data.
+ */
+ClientRequest * client_request_new_with_data2(ClientConf * conf, const gchar * path,
+    const gchar * post_data, const gchar * loggable_post_data, ClientRequestCallback cb, gpointer user_data);
+/*
  * client_request_cancel
  * 
  * Cancel an ongoing request. The callback is not called.
