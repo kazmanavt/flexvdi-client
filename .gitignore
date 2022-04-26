@@ -1,2 +1,19 @@
 *kdev4
 
+/cmake-build-default-system/
+/.idea/
+CMakeFiles
+CMakeCache.txt
+CTestTestfile.cmake
+cmake_install.cmake
+Makefile
+
+src/flexvdi-client
+src/libflexvdi-client.so
+test/get_printer_ppds
+test/test_client_log
+test/test_client_request
+test/test_terminal_id
+
+appimg/
+resources/resources.c

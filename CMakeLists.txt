@@ -35,7 +35,7 @@ macro(check_module target modname pkgname)
     endif ()
 endmacro ()
 
-check_module(LIB flexdp "flexdp >= 2.2.4")
+#check_module(LIB flexdp "flexdp >= 2.2.4")
 check_module(LIB spice_glib spice-client-glib-2.0)
 check_module(LIB glib glib-2.0)
 check_module(LIB gobject gobject-2.0)

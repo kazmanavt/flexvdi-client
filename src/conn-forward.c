@@ -21,7 +21,7 @@
 #include <glib.h>
 #include <gio/gio.h>
 #include <string.h>
-#include <flexdp.h>
+#include "flexdp.h"
 #include "conn-forward.h"
 
 struct _ConnForwarder {
