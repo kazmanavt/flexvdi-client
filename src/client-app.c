@@ -78,6 +78,7 @@ struct _ClientApp {
     ClientConn * connection;
     const gchar * username;
     const gchar * password;
+    const gchar * authenticator;
     const gchar * desktop;
     gchar * desktop_name;
     GHashTable * desktops;
@@ -469,12 +470,31 @@ static void client_app_show_login(ClientApp * app, const gchar * error) {
     app->username = app->password = app->desktop = "";
 
     g_clear_object(&app->current_request);
-    g_autofree gchar * req_body = g_strdup_printf(
-        "{\"hwaddress\": \"%s\"}", client_conf_get_terminal_id(app->conf));
-    app->current_request = client_request_new_with_data(app->conf,
-        "/vdi/authmode", req_body, req_body, authmode_request_cb, app);
+    app->current_request = client_request_new(app->conf,
+        "/rest/auth/auths", authmode_request_cb, app);
 }
 
+
+void look_for_auth_method(JsonArray *arr, guint idx, JsonNode *el, gpointer udata) {
+    GList * auths = *(GList **)udata;
+
+    if (JSON_NODE_HOLDS_OBJECT(el)) {
+        JsonObject * obj = json_node_get_object(el);
+        const gchar * name = json_object_get_string_member(obj, "auth");
+        if (name != NULL) {
+            auths = g_list_append(auths, g_strdup(name));
+            const gchar * type = json_object_get_string_member(obj, "type");
+            if (type != NULL) {
+                auths = g_list_append(auths, g_strdup(type));
+                auths = g_list_append(auths, g_strdup_printf("%s (%s)", name, type));
+            } else {
+                auths = g_list_append(auths, g_strdup("UNKNOWN"));
+                auths = g_list_append(auths, g_strdup_printf("%s (UNKNOWN)", name));
+            }
+        }
+    }
+    *(GList **)udata = auths;
+}
 
 /*
  * Authmode response handler.
@@ -488,21 +508,27 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
         client_app_configure(app, "Failed to contact server");
         g_warning("Request failed: %s", error->message);
 
-    } else if (JSON_NODE_HOLDS_OBJECT(root)) {
-        JsonObject * response = json_node_get_object(root);
-        const gchar * status = json_object_get_string_member(response, "status");
-        const gchar * auth_mode = json_object_get_string_member(response, "auth_mode");
+    } else if (JSON_NODE_HOLDS_ARRAY(root)) {
+        JsonArray * resp = json_node_get_array(root);
+        // get the auth modes from request as list with 3 items per auth mode:
+        // name, type, name (type)
+        GList * auths = NULL;
+        json_array_foreach_element(resp, look_for_auth_method, &auths);
 
-        if (g_strcmp0(status, "OK") != 0) {
+        if (g_list_length(auths) == 0) {
+            g_list_free_full(auths, g_free);
             client_app_configure(app, "Access denied");
-        } else if (g_strcmp0(auth_mode, "active_directory") == 0) {
+        } else {
+            client_app_window_set_authenticator(app->main_window, auths, client_conf_get_authenticator(app->conf));
+            g_list_free_full(auths, g_free);
+
             client_app_window_hide_status(app->main_window);
             client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
-            if (app->autologin && client_conf_get_username(app->conf) && client_conf_get_password(app->conf))
-                button_pressed_handler(app->main_window, LOGIN_BUTTON, app);
-        } else if (app->autologin) {
-            // Kiosk mode, make a desktop request
-            client_app_request_desktop(app);
+        //    if (app->autologin && client_conf_get_username(app->conf) && client_conf_get_password(app->conf))
+        //        button_pressed_handler(app->main_window, LOGIN_BUTTON, app);
+        // } else if (app->autologin) {
+        //    // Kiosk mode, make a desktop request
+        //    client_app_request_desktop(app);
         }
 
     } else {

@@ -274,7 +274,7 @@
                     <property name="name">username</property>
                     <property name="placeholder-text" translatable="yes">username</property>
                     <property name="primary-icon-name">user</property>
-                    <property name="width-request">250</property>
+                    <property name="width-request">300</property>
                     <property name="hexpand">False</property>
                     <property name="halign">GTK_ALIGN_CENTER</property>
                   </object>
@@ -286,7 +286,16 @@
                     <property name="caps-lock-warning">True</property>
                     <property name="primary-icon-name">lock</property>
                     <property name="visibility">False</property>
-                    <property name="width-request">250</property>
+                    <property name="width-request">300</property>
+                    <property name="hexpand">False</property>
+                    <property name="halign">GTK_ALIGN_CENTER</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkComboBox" id="authenticator">
+                    <property name="name">authenticator</property>
+                    <property name="has-entry">True</property>
+                    <property name="width-request">300</property>
                     <property name="hexpand">False</property>
                     <property name="halign">GTK_ALIGN_CENTER</property>
                   </object>
@@ -295,7 +304,7 @@
                   <object class="GtkButton" id="login">
                     <property name="name">login-btn</property>
                     <property name="label">login</property>
-                    <property name="width-request">250</property>
+                    <property name="width-request">300</property>
                     <property name="hexpand">False</property>
                     <property name="halign">GTK_ALIGN_CENTER</property>
                   </object>

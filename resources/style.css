@@ -101,7 +101,7 @@ label.subtitle {
     font-size: 120%;
 }
 
-entry, treeview, .frame {
+entry, treeview, .frame, .combo {
     background-color: white;
     border-color: #b6b6b6;
 }

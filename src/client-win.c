@@ -44,6 +44,8 @@ struct _ClientAppWindow {
     GtkButton * back;
     GtkEntry * username;
     GtkEntry * password;
+    GtkComboBox * authenticator;
+    GtkListStore * authenticator_store;
     GtkTreeView * desktops;
     GtkListStore * desk_store;
     GtkImage * logo_toolbar;
@@ -88,6 +90,7 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, back);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, username);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, password);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, authenticator);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, desktops);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, logo_toolbar);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, logo_client);
@@ -122,11 +125,16 @@ static void button_pressed_handler(GtkButton * button, gpointer user_data);
 static void entry_activate_handler(GtkEntry * entry, gpointer user_data);
 static void desktop_selected_handler(GtkTreeView * tree_view, GtkTreePath * path,
                                      GtkTreeViewColumn * column, gpointer user_data);
+gchar* format_entry_text(GtkComboBox* self, gchar* path, gpointer user_data);
 
 static void client_app_window_init(ClientAppWindow * win) {
     gtk_widget_init_template(GTK_WIDGET(win));
 
     gtk_label_set_text(win->version, "version " VERSION_STRING);
+    win->authenticator_store = gtk_list_store_new(3, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
+    gtk_combo_box_set_model(win->authenticator, GTK_TREE_MODEL(win->authenticator_store));
+    gtk_combo_box_set_entry_text_column(win->authenticator, 2);
+    gtk_combo_box_set_id_column(win->authenticator, 0);
     win->desk_store = gtk_list_store_new(1, G_TYPE_STRING);
     gtk_tree_view_set_model(win->desktops, GTK_TREE_MODEL(win->desk_store));
 
@@ -138,12 +146,19 @@ static void client_app_window_init(ClientAppWindow * win) {
     g_signal_connect(win->connect, "clicked", G_CALLBACK(button_pressed_handler), win);
     g_signal_connect(win->back, "clicked", G_CALLBACK(button_pressed_handler), win);
     g_signal_connect(win->password, "activate", G_CALLBACK(entry_activate_handler), win);
+    g_signal_connect(win->authenticator, "format-entry-text", G_CALLBACK(format_entry_text), win);
     g_signal_connect(win->desktops, "row-activated", G_CALLBACK(desktop_selected_handler), win);
+
+    GtkEntry * au_entry = GTK_ENTRY(gtk_bin_get_child(GTK_BIN(win->authenticator)));
+    gtk_entry_set_icon_from_icon_name(au_entry, GTK_ENTRY_ICON_PRIMARY, "authenticator");
+    gtk_entry_set_placeholder_text(au_entry, "- select authenticator -");
+    gtk_editable_set_editable(GTK_EDITABLE(au_entry), FALSE);
 }
 
 
 static void client_app_window_dispose(GObject * obj) {
     ClientAppWindow * win = CLIENT_APP_WINDOW(obj);
+    g_clear_object(&win->authenticator_store);
     g_clear_object(&win->desk_store);
     if (win->error_timeout > 0) {
         g_source_remove(win->error_timeout);
@@ -233,6 +248,21 @@ static void entry_activate_handler(GtkEntry * entry, gpointer user_data) {
     ClientAppWindow * win = CLIENT_APP_WINDOW(user_data);
     if (entry == win->password)
         g_signal_emit(win, signals[CLIENT_APP_BUTTON_PRESSED], 0, LOGIN_BUTTON);
+}
+
+
+/*
+ * Authenticator selection changed, for login.
+ */
+gchar* format_entry_text(GtkComboBox* self, gchar* path, gpointer user_data) {
+    ClientAppWindow * win = CLIENT_APP_WINDOW(user_data);
+
+    GtkTreeIter iter;
+    gtk_tree_model_get_iter_from_string(GTK_TREE_MODEL(win->authenticator_store), &iter, path);
+    gchar * authenticator_name = NULL;
+    gtk_tree_model_get(GTK_TREE_MODEL(win->authenticator_store), &iter, 0, &authenticator_name, -1);
+
+    return g_strdup(authenticator_name);
 }
 
 
@@ -410,6 +440,41 @@ const gchar * client_app_window_get_username(ClientAppWindow * win) {
 
 const gchar * client_app_window_get_password(ClientAppWindow * win) {
     return gtk_entry_get_text(win->password);
+}
+
+
+void client_app_window_set_authenticator(ClientAppWindow * win, GList * authenticator, const gchar * active) {
+    GtkTreeIter it;
+    gtk_list_store_clear(win->authenticator_store);
+
+    for (GList* au_item = authenticator; au_item != NULL; au_item = au_item->next->next->next) {
+        gtk_list_store_append(win->authenticator_store, &it);
+        gtk_list_store_set(win->authenticator_store, &it, 0, au_item->data, 1, au_item->next->data, 2, au_item->next->next->data, -1);
+
+        if (active != NULL && !g_strcmp0(au_item->data, active))
+            gtk_combo_box_set_active_iter(win->authenticator, &it);
+    }
+    // const gchar* authenticator = client_conf_get_authenticator(conf);
+
+    // if (authenticator) {
+    //     GtkTreeIter iter;
+    //     gtk_tree_model_get_iter_first(GTK_TREE_MODEL(win->authenticator_store), &iter);
+    //     do {
+    //         gchar* authenticator_name = NULL;
+    //         gtk_tree_model_get(GTK_TREE_MODEL(win->authenticator_store), &iter, 0, &authenticator_name, -1);
+    //         if (g_strcmp0(authenticator_name, authenticator) == 0) {
+    //             gtk_combo_box_set_active_iter(win->authenticator, &iter);
+    //             break;
+    //         }
+    //     } while (gtk_tree_model_iter_next(GTK_TREE_MODEL(win->authenticator_store), &iter));
+    // }
+}
+
+const gchar * client_app_window_get_authenticator(ClientAppWindow * win) {
+    const gchar * name = gtk_combo_box_get_active_id(win->authenticator);
+    if (name == NULL)
+        name = "";
+    return name;
 }
 
 

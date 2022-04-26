@@ -16,6 +16,7 @@ add_custom_command(OUTPUT ${RESOURCES_C}
                         images/logo-client.png
                         icons/16x16/actions/user.png
                         icons/16x16/actions/lock.png
+                        icons/16x16/actions/authenticator.png
                         icons/16x16/actions/window-close.png
                         icons/16x16/actions/window-minimize.png
                         icons/16x16/actions/window-maximize.png

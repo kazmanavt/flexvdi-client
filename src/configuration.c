@@ -35,6 +35,7 @@ struct _ClientConf {
     gchar * port;
     gchar * username;
     gchar * password;
+    gchar * authenticator;
     gchar * passfile;
     gchar * terminal_id;
     gchar * uri;
@@ -98,6 +99,8 @@ static void client_conf_init(ClientConf * conf) {
         "User name", "<user name>" },
         { "password", 'w', 0, G_OPTION_ARG_STRING, &conf->password,
         "Password", "<password>" },
+        { "authenticator", 'a', 0, G_OPTION_ARG_STRING, &conf->authenticator,
+        "Authenticator ID", "<authenticator>" },
         { "passfile", 'w', 0, G_OPTION_ARG_STRING, &conf->passfile,
         "Password", "<passfile>" },
         { "desktop", 'd', 0, G_OPTION_ARG_STRING, &conf->desktop,
@@ -206,6 +209,7 @@ static void client_conf_init(ClientConf * conf) {
     conf->soup = soup_session_new_with_options(
         "ssl-strict", FALSE,
         "timeout", 45,
+	SOUP_SESSION_USER_AGENT, "User-agent: Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0",
         NULL);
 }
 
@@ -221,6 +225,7 @@ static void client_conf_finalize(GObject * obj) {
     g_free(conf->port);
     g_free(conf->username);
     g_free(conf->password);
+    g_free(conf->authenticator);
     g_free(conf->passfile);
     g_free(conf->desktop);
     g_free(conf->proxy_uri);
@@ -473,6 +478,10 @@ const gchar * client_conf_get_password(ClientConf * conf) {
     return conf->password;
 }
 
+const gchar* client_conf_get_authenticator(ClientConf* conf) {
+    return conf->authenticator;
+}
+
 
 const gchar * client_conf_get_desktop(ClientConf * conf) {
     return conf->desktop;
@@ -672,6 +681,14 @@ void client_conf_set_username(ClientConf * conf, const gchar * username) {
 }
 
 
+void client_conf_set_authenticator(ClientConf* conf, const gchar* authenticator) {
+    if (conf->kiosk_mode) return;
+    if (!g_strcmp0(conf->authenticator, authenticator)) return;
+
+    g_free(conf->authenticator);
+    conf->authenticator = g_strdup(authenticator);
+    write_string(conf->file, "General", "authenticator", conf->authenticator);
+}
 void client_conf_set_uri(ClientConf * conf, const gchar * uri) {
     g_free(conf->uri);
     conf->uri = g_strdup(uri);

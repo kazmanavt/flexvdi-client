@@ -30,6 +30,7 @@
         <file>images/logo-client.png</file>
         <file>icons/16x16/actions/user.png</file>
         <file>icons/16x16/actions/lock.png</file>
+        <file>icons/16x16/actions/authenticator.png</file>
         <file>icons/16x16/actions/window-close.png</file>
         <file alias="icons/16x16/actions/dialog-information.png">icons/16x16/actions/window-close.png</file>
         <file>icons/16x16/actions/window-minimize.png</file>

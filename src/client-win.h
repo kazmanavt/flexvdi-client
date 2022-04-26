@@ -34,14 +34,14 @@
 #define CLIENT_APP_WINDOW_TYPE (client_app_window_get_type ())
 G_DECLARE_FINAL_TYPE(ClientAppWindow, client_app_window, CLIENT, APP_WINDOW, GtkApplicationWindow)
 
-enum {
+enum ClientAppWindowButtons {
     SETTINGS_BUTTON = 0,
     ABOUT_BUTTON,
     SAVE_BUTTON,
     DISCARD_BUTTON,
     LOGIN_BUTTON,
     BACK_BUTTON
-} ClientAppWindowButtons;
+};
 
 /*
  * client_app_window_new
@@ -123,6 +123,20 @@ const gchar * client_app_window_get_username(ClientAppWindow * win);
  * Get password as entered by the user in the text box.
  */
 const gchar * client_app_window_get_password(ClientAppWindow * win);
+
+/*
+ * client_app_window_set_authenticator
+ *
+ * Set the authenticator list from server.
+ */
+void client_app_window_set_authenticator(ClientAppWindow * win, GList * authenticator, const gchar * active);
+
+/*
+ * client_app_window_get_authenticator
+ *
+ * Get the authenticator 
+ */
+const gchar* client_app_window_get_authenticator(ClientAppWindow* win);
 
 /*
  * client_app_window_set_desktops
