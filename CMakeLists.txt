@@ -42,6 +42,7 @@ check_module(LIB gobject gobject-2.0)
 check_module(LIB gio gio-2.0)
 check_module(LIB libsoup libsoup-2.4)
 check_module(LIB json json-glib-1.0)
+check_module(LIB bzip2 bzip2)
 check_module(CLIENT gst gstreamer-1.0)
 
 if (WIN32)

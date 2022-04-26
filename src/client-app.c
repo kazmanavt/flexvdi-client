@@ -25,6 +25,7 @@
 #include <gtk/gtk.h>
 #include <gst/gst.h>
 #include <spice-client-gtk.h>
+#include <bzlib.h>
 
 #include "client-app.h"
 #include "client-log.h"
@@ -83,6 +84,8 @@ struct _ClientApp {
     gchar * token;
     gchar * desktop_name;
     GHashTable * desktops;
+    gchar * ticket;
+    gchar * scrambler;
     SpiceMainChannel * main;
     gint64 last_input_time;
     gboolean autologin;
@@ -394,7 +397,7 @@ static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer
     return FALSE;
 }
 
-
+static void client_app_request_desktop_uds(ClientApp * app);
 /*
  * Main window handlers: desktop selected (double-click, enter, connect button)
  */
@@ -407,7 +410,7 @@ static void desktop_selected_handler(ClientAppWindow * win, gpointer user_data) 
     gchar * desktop = g_hash_table_lookup(app->desktops, app->desktop_name);
     if (desktop) {
         app->desktop = desktop;
-        client_app_request_desktop(app);
+        client_app_request_desktop_uds(app);
     } else {
         g_warning("Selected desktop \"%s\" does not exist", app->desktop_name);
     }
@@ -744,6 +747,153 @@ static void client_app_show_desktops(ClientApp * app, JsonArray * desktops) {
     client_app_window_set_central_widget(app->main_window, "desktops");
     client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
 }
+
+
+
+
+static void desktop_request_uds_cb(ClientRequest * req, gpointer user_data);
+/*
+ * Start a new uds desktop request by selected desktop
+ */
+static void client_app_request_desktop_uds(ClientApp * app) {
+    client_app_window_status(app->main_window, "Requesting desktop connection credits...");
+    client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
+
+    gchar * srv_id = g_strstr_len(app->desktop, -1, "//") + 2;
+    gchar * trans_id = g_strstr_len(srv_id, -1, "/") + 1;
+    srv_id = g_strndup(srv_id, (char*)trans_id - 1 - (char*)srv_id);
+
+    g_clear_object(&app->current_request);
+
+    const gchar * local_ip = client_conf_get_local_ip(app->conf);
+    g_autofree gchar * req_body = g_strdup_printf(
+        "{\"service\": \"%s\",\"clientOS\": \"Linux\",\"transport\": \"%s\",\"clientIp\": \"%s\"}",
+	srv_id, trans_id, local_ip);
+
+    app->current_request = client_request_new_with_data2(app->conf,
+        "/rest/ticketz/create", req_body, req_body, desktop_request_uds_cb, app);
+
+    g_free(srv_id);
+
+}
+
+
+static void client_app_request_desktop_uds_p2(ClientApp *);
+static void desktop_request_uds_cb(ClientRequest * req, gpointer user_data) {
+    ClientApp * app = CLIENT_APP(user_data);
+    g_autoptr(GError) error = NULL;
+    gboolean invalid = FALSE;
+    JsonNode * root = client_request_get_result(req, &error);
+
+    if (error) {
+        client_app_window_status(app->main_window, "Fail to get desktop connection credits...");
+        client_app_show_desktops(app, NULL);
+        g_warning("Request failed: %s", error->message);
+
+    } else if (JSON_NODE_HOLDS_OBJECT(root)) {
+        JsonObject * response = json_node_get_object(root);
+        const gchar * status = json_object_get_string_member(response, "result");
+        if (g_strcmp0(status, "ok") == 0) {
+	    if (app->ticket) g_free(app->ticket);
+	    if (app->scrambler) g_free(app->scrambler);
+            app->ticket = g_strdup(json_object_get_string_member(response, "ticket"));
+            app->scrambler = g_strdup(json_object_get_string_member(response, "scrampler"));
+            client_app_request_desktop_uds_p2(app);
+
+        } else invalid = TRUE;
+    } else invalid = TRUE;
+
+    if (invalid) {
+        client_app_window_status(app->main_window, "Fail to get desktop connection credits...");
+        client_app_show_desktops(app, NULL);
+        g_warning("Invalid response from server, see debug messages");
+    }
+}
+
+
+static void desktop_request_uds_cb_p2(ClientRequest *, gpointer);
+static void client_app_request_desktop_uds_p2(ClientApp * app) {
+    client_app_window_status(app->main_window, "Requesting desktop connection parameters...");
+    client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
+
+
+    g_clear_object(&app->current_request);
+
+    g_autofree gchar * url = g_strdup_printf("/rest/client/%s/%s?hostname=%s&version=4.2.0",
+		    app->ticket, app->scrambler, g_get_host_name());
+
+    
+    // may be here we need other user agent
+    // "User-agent: Linux  - Star Connector 4.2.0"
+    app->current_request = client_request_new(app->conf,
+        url, desktop_request_uds_cb_p2, app);
+
+}
+
+
+static gchar * k_decompress(guchar * buffer, gsize len, gsize * len_out) {
+    char out[10000];
+    *len_out = 10000;
+    int rc = BZ2_bzBuffToBuffDecompress(
+		    (char *)out, (unsigned int *)len_out,
+		    (char *)buffer, len,
+		    0, 0);
+    if (rc != BZ_OK) {
+	return NULL;
+        //sprintf(out, "ERROR: %d", rc);
+	//*len_out = strlen(out);
+    }
+     
+    out[*len_out] = '\0';
+    return g_strdup(out);
+}
+
+static void client_app_connect_with_response(ClientApp * app, JsonObject * params);
+static void desktop_request_uds_cb_p2(ClientRequest * req, gpointer user_data) {
+    ClientApp * app = CLIENT_APP(user_data);
+    g_autoptr(GError) error = NULL;
+    gboolean invalid = FALSE;
+    JsonNode * root = client_request_get_result(req, &error);
+
+    if (error) {
+        client_app_window_status(app->main_window, "Fail to get desktop connection parameters...");
+        client_app_show_desktops(app, NULL);
+        g_warning("Invalid response from server, see debug messages");
+
+    } else if (JSON_NODE_HOLDS_OBJECT(root)) {
+        JsonObject * response = json_node_get_object(root);
+        JsonNode * res = json_object_get_member(response, "result");
+        if (JSON_NODE_HOLDS_OBJECT(res)) {
+            JsonObject * result = json_node_get_object(res);
+            const gchar * params_gz_b64 = json_object_get_string_member(result, "params");
+
+            gsize len;
+            guchar *  params_gz = g_base64_decode(params_gz_b64, &len);
+            gchar * params_json = k_decompress(params_gz, len, &len);
+            g_free(params_gz);
+            if (params_json != NULL) {
+                g_autoptr(JsonParser) parser = json_parser_new_immutable();
+                if (json_parser_load_from_data(parser, params_json, -1, NULL)) {
+                    JsonNode * root = json_parser_get_root(parser);
+                    if (JSON_NODE_HOLDS_OBJECT(root)) {
+                        JsonObject * params_obj = json_node_get_object(root);
+                        client_app_window_status(app->main_window, "Connecting to desktop...");
+                        client_app_connect_with_response(app, params_obj);
+                        g_free(params_json);
+                    } else invalid = TRUE;
+                } else invalid = TRUE;
+            } else invalid = TRUE;
+        } else invalid = TRUE;
+    } else invalid = TRUE;
+
+    if (invalid) {
+        client_app_window_status(app->main_window, "Fail to get desktop connection parameters...");
+        client_app_show_desktops(app, NULL);
+        g_warning("Invalid response from server, see debug messages");
+    }
+}
+
+
 
 
 static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_data);
