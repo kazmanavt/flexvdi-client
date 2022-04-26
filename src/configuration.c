@@ -36,6 +36,7 @@ struct _ClientConf {
     gchar * username;
     gchar * password;
     gchar * authenticator;
+    gchar * token;
     gchar * passfile;
     gchar * terminal_id;
     gchar * uri;
@@ -178,6 +179,7 @@ static void client_conf_init(ClientConf * conf) {
     gsize num_device_options = G_N_ELEMENTS(device_options) - 1;
 
     // Dafault values other than 0, NULL or FALSE
+    conf->token = NULL;
     conf->auto_clipboard = TRUE;
     conf->grab_mouse = TRUE;
     conf->grab_sequence = g_strdup("Shift_L+F12");
@@ -225,6 +227,7 @@ static void client_conf_finalize(GObject * obj) {
     g_free(conf->port);
     g_free(conf->username);
     g_free(conf->password);
+    g_free(conf->token);
     g_free(conf->authenticator);
     g_free(conf->passfile);
     g_free(conf->desktop);
@@ -483,6 +486,11 @@ const gchar* client_conf_get_authenticator(ClientConf* conf) {
 }
 
 
+const gchar * client_conf_get_token(ClientConf * conf) {
+    return conf->token;
+}
+
+
 const gchar * client_conf_get_desktop(ClientConf * conf) {
     return conf->desktop;
 }
@@ -689,6 +697,14 @@ void client_conf_set_authenticator(ClientConf* conf, const gchar* authenticator)
     conf->authenticator = g_strdup(authenticator);
     write_string(conf->file, "General", "authenticator", conf->authenticator);
 }
+
+
+void client_conf_set_token(ClientConf * conf, const gchar * token) {
+    g_free(conf->token);
+    conf->token = g_strdup(token);
+}
+
+
 void client_conf_set_uri(ClientConf * conf, const gchar * uri) {
     g_free(conf->uri);
     conf->uri = g_strdup(uri);

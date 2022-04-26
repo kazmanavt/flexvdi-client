@@ -80,6 +80,7 @@ struct _ClientApp {
     const gchar * password;
     const gchar * authenticator;
     const gchar * desktop;
+    gchar * token;
     gchar * desktop_name;
     GHashTable * desktops;
     SpiceMainChannel * main;
@@ -169,6 +170,7 @@ static void client_app_init(ClientApp * app) {
     // Create the configuration object. Reads options from config file.
     app->conf = client_conf_new();
     app->username = app->password = app->desktop = "";
+    app->token = NULL;
     app->desktops = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
     app->autologin = TRUE;
 
@@ -347,7 +349,7 @@ static void open_with_default_app(PrintJobManager * pjb, const char * file) {
 }
 
 
-static void client_app_request_desktop(ClientApp * app);
+static void client_app_request_login(ClientApp * app);
 
 /*
  * Main window handlers: button pressed
@@ -364,10 +366,12 @@ static void button_pressed_handler(ClientAppWindow * win, int button, gpointer u
         case LOGIN_BUTTON:
             app->username = client_app_window_get_username(win);
             app->password = client_app_window_get_password(win);
+            app->authenticator = client_app_window_get_authenticator(win);
             // Save the username in the config file
             client_conf_set_username(app->conf, app->username);
+            client_conf_set_authenticator(app->conf, app->authenticator);
             client_conf_save(app->conf);
-            client_app_request_desktop(CLIENT_APP(user_data));
+            client_app_request_login(CLIENT_APP(user_data));
             break;
         case SAVE_BUTTON:
             client_app_window_save_config(app->main_window, app->conf);
@@ -540,49 +544,46 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
 }
 
 
-static void desktop_request_cb(ClientRequest * req, gpointer user_data);
+static void login_request_cb(ClientRequest * req, gpointer user_data);
 
 /*
- * Start a new desktop request with currently selected username, password
- * and desktop name (which may be empty).
+ * Start a new login request with currently selected username, password
  */
-static void client_app_request_desktop(ClientApp * app) {
-    client_app_window_status(app->main_window, "Requesting desktop policy...");
+static void client_app_request_login(ClientApp * app) {
+    client_app_window_status(app->main_window, "Requesting login...");
     client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
 
     g_clear_object(&app->current_request);
     
     g_autofree gchar *user = util_strescape(app->username, NULL);
     g_autofree gchar *pass = util_strescape(app->password, NULL);
+    g_autofree gchar *authenticator = util_strescape(app->authenticator, NULL);
 
     g_autofree gchar * req_body = g_strdup_printf(
-        "{\"hwaddress\": \"%s\", \"username\": \"%s\", \"password\": \"%s\", \"desktop\": \"%s\"}",
-        client_conf_get_terminal_id(app->conf),
-        user, pass, app->desktop);
+        "{\"auth\": \"%s\", \"username\": \"%s\", \"password\": \"%s\"}",
+        authenticator, user, pass);
 
     g_autofree gchar * loggable_req_body = g_strdup_printf(
-        "{\"hwaddress\": \"%s\", \"username\": \"%s\", \"password\": \"%s\", \"desktop\": \"%s\"}",
-        client_conf_get_terminal_id(app->conf),
-        user, "******", app->desktop);
+        "{\"auth\": \"%s\", \"username\": \"%s\", \"password\": \"%s\"}",
+        authenticator, user, "******");
 
     app->current_request = client_request_new_with_data(app->conf,
-        "/vdi/desktop", req_body, loggable_req_body, desktop_request_cb, app);
+        "/rest/auth/login", req_body, loggable_req_body, login_request_cb, app);
 }
 
-
+/* KZ: flex feature
 static gboolean client_app_repeat_request_desktop(gpointer user_data) {
     client_app_request_desktop(CLIENT_APP(user_data));
     return FALSE; // Cancel timeout
 }
+*/
 
-
-static void client_app_show_desktops(ClientApp * app, JsonObject * desktop);
-static void client_app_connect_with_response(ClientApp * app, JsonObject * params);
+static void client_app_request_pools(ClientApp * app);
 
 /*
- * Desktop response handler.
+ * Login response handler.
  */
-static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
+static void login_request_cb(ClientRequest * req, gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
     g_autoptr(GError) error = NULL;
     gboolean invalid = FALSE;
@@ -594,30 +595,27 @@ static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
 
     } else if (JSON_NODE_HOLDS_OBJECT(root)) {
         JsonObject * response = json_node_get_object(root);
-        const gchar * status = json_object_get_string_member(response, "status");
-        if (g_strcmp0(status, "OK") == 0) {
-            client_app_window_status(app->main_window, "Connecting to desktop...");
-            client_app_connect_with_response(app, response);
+        const gchar * status = json_object_get_string_member(response, "result");
+        if (g_strcmp0(status, "ok") == 0) {
+	    const gchar * token = json_object_get_string_member(response, "token");
+	    // const gchar * srambler = json_object_get_string_member(response, "scrambler");
+	    if (app->token != NULL)
+                g_free(app->token);
+	    app->token = g_strdup(token);
+	    client_conf_set_token(app->conf, token);
+            client_app_request_pools(app);
 
-        } else if (g_strcmp0(status, "Pending") == 0) {
+/* KZ: flex feature
+        } else if (g_strcmp0(status, "pending") == 0) {
             client_app_window_status(app->main_window, "Preparing desktop...");
             // Retry (forever) after 3 seconds
             g_timeout_add_seconds(3, client_app_repeat_request_desktop, app);
-
-        } else if (g_strcmp0(status, "Error") == 0) {
-            const gchar * message = json_object_get_string_member(response, "message");
+*/
+        } else if (g_strcmp0(status, "error") == 0) {
+            const gchar * message = json_object_get_string_member(response, "error");
             client_app_show_login(app, message);
             client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
 
-        } else if (g_strcmp0(status, "SelectDesktop") == 0) {
-            const gchar * message = json_object_get_string_member(response, "message");
-            g_autoptr(JsonParser) parser = json_parser_new_immutable();
-            if (json_parser_load_from_data(parser, message, -1, NULL)) {
-                root = json_parser_get_root(parser);
-                if (JSON_NODE_HOLDS_OBJECT(root)) {
-                    client_app_show_desktops(app, json_node_get_object(root));
-                } else invalid = TRUE;
-            } else invalid = TRUE;
         } else invalid = TRUE;
     } else invalid = TRUE;
 
@@ -628,6 +626,51 @@ static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
     }
 }
 
+
+static void pools_request_cb(ClientRequest * req, gpointer user_data);
+static void client_app_show_desktops(ClientApp * app, JsonArray * desktop);
+
+/*
+ * Start a new pools request with token obtained by login request
+ */
+static void client_app_request_pools(ClientApp * app) {
+    client_app_window_status(app->main_window, "Requesting pools...");
+    client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
+
+    g_clear_object(&app->current_request);
+    
+    app->current_request = client_request_new(app->conf,
+                 "/rest/connection", pools_request_cb, app);
+}
+
+static void pools_request_cb(ClientRequest * req, gpointer user_data) {
+    ClientApp * app = CLIENT_APP(user_data);
+    g_autoptr(GError) error = NULL;
+    gboolean invalid = FALSE;
+    JsonNode * root = client_request_get_result(req, &error);
+
+    if (error) {
+        client_app_show_login(app, "Failed to contact server");
+        g_warning("Request failed: %s", error->message);
+
+    } else if (JSON_NODE_HOLDS_OBJECT(root)) {
+        JsonObject * response = json_node_get_object(root);
+	JsonObject * result = json_object_get_object_member(response, "result");
+	if (result != NULL) {
+            JsonArray * services = json_object_get_array_member(result, "services");
+            if (services != NULL) {
+                client_app_show_desktops(app, services);
+            } else invalid = TRUE;
+	} else invalid = TRUE;
+	
+    } else invalid = TRUE;
+
+    if (invalid) {
+        client_app_show_login(app,
+            "Invalid response from server");
+        g_warning("Invalid response from server, see debug messages");
+    }
+}
 
 // Case-insensitive UTF-8 string comparison
 static int utf8_strcmp(const char * a, const char * b) {
@@ -640,19 +683,57 @@ static int utf8_strcmp(const char * a, const char * b) {
 /*
  * Show the desktops page. Fill in the list with the desktop response.
  */
-static void client_app_show_desktops(ClientApp * app, JsonObject * desktops) {
-    JsonObjectIter it;
-    const gchar * desktop_key;
-    JsonNode * desktop_node;
 
-    g_hash_table_remove_all(app->desktops);
-    json_object_iter_init(&it, desktops);
-    while (json_object_iter_next(&it, &desktop_key, &desktop_node)) {
-        const gchar * desktop_name = json_node_get_string(desktop_node);
-        if (g_strcmp0(desktop_name, "") == 0) {
-            desktop_name = desktop_key;
-        }
-        g_hash_table_insert(app->desktops, g_strdup(desktop_name), g_strdup(desktop_key));
+void get_spice_transport(JsonArray *array, guint idx, JsonNode *node, gpointer user_data) {
+    gchar **d_key_p = (gchar **) user_data;
+
+    if (!JSON_NODE_HOLDS_OBJECT(node)) return;
+    JsonObject * tr = json_node_get_object(node);
+    if (g_strcmp0(json_object_get_string_member(tr, "name"), "spice") != 0) return;
+    const gchar * link = json_object_get_string_member(tr, "link");
+    if (link == NULL) return;
+
+    *d_key_p = g_strdup(link);
+}
+
+void add_desktop(JsonArray *array, guint idx, JsonNode *node, gpointer user_data) {
+    GHashTable *desktops = (GHashTable *) user_data;
+
+    if (!JSON_NODE_HOLDS_OBJECT(node)) {
+        return;
+    }
+
+    JsonObject * dt = json_node_get_object(node);
+
+    node = json_object_get_member(dt, "transports");
+
+    if (node == NULL) {
+        return;
+    } else if (!JSON_NODE_HOLDS_ARRAY(node)) {
+        return;
+    }
+
+    gchar * d_key = NULL;
+    JsonArray * trs = json_node_get_array(node);
+    json_array_foreach_element (trs, get_spice_transport, &d_key);
+
+    if (d_key == NULL) return;
+
+    const gchar * desktop_name = json_object_get_string_member(dt, "name");
+    gchar * dn;
+    if (desktop_name == NULL) {
+        dn = g_strdup_printf("Unk%03d", idx);
+    } else {
+        dn = g_strdup(desktop_name);
+    }
+    g_hash_table_insert(desktops, dn, d_key);
+}
+
+static void client_app_show_desktops(ClientApp * app, JsonArray * desktops) {
+
+    if (desktops != NULL) {
+        g_hash_table_remove_all(app->desktops);
+        json_array_foreach_element (desktops, add_desktop, app->desktops);
     }
 
     g_autoptr(GList) desktop_names =

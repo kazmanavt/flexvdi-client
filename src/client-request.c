@@ -157,6 +157,11 @@ ClientRequest * client_request_new(ClientConf * conf, const gchar * path,
 
     g_autofree gchar * uri = client_conf_get_connection_uri(conf, path);
     SoupMessage * msg = soup_message_new("GET", uri);
+    const gchar * token = client_conf_get_token(conf);
+    if (token != NULL) {
+        soup_message_headers_replace(msg->request_headers, "X-Auth-Token", token);
+    }
+
     g_debug("GET request to %s", uri);
     soup_session_send_async(req->soup, msg, req->cancel_mgr_request,
                             request_finished_cb, g_object_ref(req));
@@ -172,6 +177,10 @@ ClientRequest * client_request_new_with_data(ClientConf * conf, const gchar * pa
 
     g_autofree gchar * uri = client_conf_get_connection_uri(conf, path);
     SoupMessage * msg = soup_message_new("POST", uri);
+    const gchar * token = client_conf_get_token(conf);
+    if (token != NULL) {
+        soup_message_headers_replace(msg->request_headers, "X-Auth-Token", token);
+    }
     
     g_debug("POST request to %s, body:\n%s", uri, loggable_post_data);
     soup_message_set_request(msg, "text/json", SOUP_MEMORY_COPY, post_data, strlen(post_data));
