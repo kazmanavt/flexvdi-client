@@ -5,7 +5,7 @@ gboolean load_legacy_config_file(GKeyFile * new_file) {
     char * line;
 
     g_autoptr(GFile) file =
-        g_file_new_build_filename(g_getenv("HOME"), ".flexvdi", "flexvdi-client.conf", NULL);
+        g_file_new_build_filename(g_getenv("HOME"), ".paralax", "paralax.conf", NULL);
     g_autoptr(GFileInputStream) fistream = g_file_read(file, NULL, &error);
     if (error) {
         if (!g_error_matches(error, G_FILE_ERROR, G_FILE_ERROR_NOENT))

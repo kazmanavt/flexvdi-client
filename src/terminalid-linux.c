@@ -27,7 +27,7 @@
 #ifdef G_LOG_DOMAIN
 #undef G_LOG_DOMAIN
 #endif
-#define G_LOG_DOMAIN "flexvdi-tid"
+#define G_LOG_DOMAIN "paralax-tid"
 
 gchar * discover_terminal_id() {
     g_debug("Discovering terminal ID");

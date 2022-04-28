@@ -42,11 +42,11 @@
 
 #ifdef _WIN32
 static void print_to_dialog(const gchar * string) {
-    gtk_icon_theme_add_resource_path(gtk_icon_theme_get_default(), "/com/flexvdi/client/icons");
+    gtk_icon_theme_add_resource_path(gtk_icon_theme_get_default(), "/com/paralax/icons");
     GtkWidget * dialog = GTK_WIDGET(gtk_window_new(GTK_WINDOW_TOPLEVEL));
     g_object_set(dialog, "title", "Help",
         "default-width", 800, "default-height", 600, "window-position", GTK_WIN_POS_CENTER,
-        "icon", gdk_pixbuf_new_from_resource("/com/flexvdi/client/images/icon.png", NULL),
+        "icon", gdk_pixbuf_new_from_resource("/com/paralax/images/icon.png", NULL),
         "type-hint", GDK_WINDOW_TYPE_HINT_DIALOG, NULL);
     GtkWidget * scroll = gtk_scrolled_window_new(NULL, NULL);
     g_object_set(scroll, "hexpand", TRUE, "vexpand", TRUE, NULL);
@@ -185,14 +185,14 @@ static void client_app_init(ClientApp * app) {
     g_application_add_option_group(G_APPLICATION(app), gst_init_get_option_group());
     g_application_set_option_context_parameter_string(G_APPLICATION(app), "[Spice URI]");
     g_application_set_option_context_summary(G_APPLICATION(app),
-        "flexVDI Client is a Virtual Desktop client for flexVDI platforms. "
+        "Paralax is a Virtual Desktop client for starVDI platforms. "
         "It can also be used as a generic Spice client providing a Spice URI on the command line.");
 }
 
 
 ClientApp * client_app_new(void) {
     return g_object_new(CLIENT_APP_TYPE,
-                        "application-id", "com.flexvdi.client",
+                        "application-id", "com.paralax",
                         "flags", G_APPLICATION_NON_UNIQUE | G_APPLICATION_HANDLES_OPEN,
                         NULL);
 }
@@ -305,19 +305,6 @@ static void network_changed(GNetworkMonitor * net_monitor, gboolean network_avai
     } else if (client_conf_get_host(app->conf) != NULL) {
         client_app_show_login(app, NULL);
     } else {
-        if (!client_conf_had_file(app->conf)) {
-            GtkWidget * dialog =
-                gtk_message_dialog_new(GTK_WINDOW(app->main_window), GTK_DIALOG_DESTROY_WITH_PARENT,
-                                       GTK_MESSAGE_QUESTION, GTK_BUTTONS_YES_NO,
-                                       "\nThis seems to be your first time with flexVDI Desktop Client\n"
-                                       "Do you want to configure it to connect to the flexVDI Demo Platform?");
-            gtk_window_set_title(GTK_WINDOW(dialog), "Try flexVDI Demo!");
-            if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_YES) {
-                client_conf_set_host(app->conf, "manager.flexvdi.com");
-                client_conf_set_username(app->conf, "flexvdi");
-            }
-            gtk_widget_destroy(dialog);
-        }
         client_app_configure(app, NULL);
     }
 }

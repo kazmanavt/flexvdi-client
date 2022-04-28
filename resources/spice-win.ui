@@ -21,7 +21,7 @@
   <template class="SpiceWindow" parent="GtkApplicationWindow">
     <property name="default-width">800</property>
     <property name="default-height">600</property>
-    <property name="icon">resource:///com/flexvdi/client/images/icon.png</property>
+    <property name="icon">resource:///com/paralax/images/icon.png</property>
     <child>
       <object class="GtkOverlay" id="overlay">
         <child>

@@ -145,9 +145,9 @@ void client_log_setup() {
     if (!g_getenv("FLEXVDI_LOG_STDERR")) {
         g_autofree gchar * file_path = g_strdup(g_getenv("FLEXVDI_LOG_FILE"));
         if (!file_path) {
-            g_autofree gchar * log_dir = g_build_filename(g_get_user_data_dir(), "flexvdi-client", NULL);
+            g_autofree gchar * log_dir = g_build_filename(g_get_user_data_dir(), "paralax", NULL);
             g_mkdir_with_parents(log_dir, 0700);
-            file_path = g_build_filename(log_dir, "flexvdi-client.log", NULL);
+            file_path = g_build_filename(log_dir, "paralax.log", NULL);
         }
         freopen(file_path, "a", stderr);
         freopen(file_path, "a", stdout);

@@ -2,9 +2,9 @@ set(RESOURCES_C "${CMAKE_CURRENT_BINARY_DIR}/resources.c")
 add_custom_command(OUTPUT ${RESOURCES_C}
                    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
                    COMMAND glib-compile-resources
-                   ARGS --target=${RESOURCES_C} --generate-source flexvdi-client.gresource.xml
+                   ARGS --target=${RESOURCES_C} --generate-source paralax.gresource.xml
                    DEPENDS
-                        flexvdi-client.gresource.xml
+                        paralax.gresource.xml
                         window.ui
                         spice-win.ui
                         keys-menu-linux.ui

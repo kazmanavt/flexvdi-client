@@ -1,15 +1,16 @@
 cmake_minimum_required(VERSION 2.8)
 
 # Project information
-project(flexvdi-client)
-set(FLEXVDI_VERSION_MAJOR 3)
-set(FLEXVDI_VERSION_MINOR 1)
-set(FLEXVDI_VERSION_PATCH 6)
-set(FLEXVDI_VERSION ${FLEXVDI_VERSION_MAJOR}.${FLEXVDI_VERSION_MINOR}.${FLEXVDI_VERSION_PATCH})
+project(paralax)
+set(CMAKE_INSTALL_PREFIX /usr)
+set(PARALAX_VERSION_MAJOR 1)
+set(PARALAX_VERSION_MINOR 0)
+set(PARALAX_VERSION_PATCH 0)
+set(PARALAX_VERSION ${PARALAX_VERSION_MAJOR}.${PARALAX_VERSION_MINOR}.${PARALAX_VERSION_PATCH})
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif(NOT CMAKE_BUILD_TYPE)
-message("${CMAKE_PROJECT_NAME} v${FLEXVDI_VERSION} ${CMAKE_BUILD_TYPE} build")
+message("${CMAKE_PROJECT_NAME} v${PARALAX_VERSION} ${CMAKE_BUILD_TYPE} build")
 if (CMAKE_C_FLAGS MATCHES ".*-DANDROID.*")
     set(ANDROID 1)
 endif ()
@@ -31,7 +32,7 @@ macro(check_module target modname pkgname)
         set(${target}_LIBRARIES ${${target}_LIBRARIES} ${${modname}_LIBRARIES})
         set(${modname}_VERSION_STR v${${modname}_VERSION})
     else ()
-        message(FATAL_ERROR "${pkgname} is needed to build the flexVDI Client.")
+        message(FATAL_ERROR "${pkgname} is needed to build the Paralax VDI Client.")
     endif ()
 endmacro ()
 
@@ -64,7 +65,7 @@ else ()
         set(EXTRA_PKGS_LDFLAGS "${EXTRA_PKGS_LDFLAGS} ${CUPS_LIBRARIES}")
         set(EXTRA_PKGS_CFLAGS "${EXTRA_PKGS_CFLAGS} -I${CUPS_INCLUDE_DIR}")
     else ()
-        message(FATAL_ERROR "Cups is needed to build the flexVDI Client.")
+        message(FATAL_ERROR "Cups is needed to build the Paralax VDI Client.")
     endif ()
     check_module(CLIENT spice_gtk spice-client-gtk-3.0)
 endif ()
@@ -141,9 +142,9 @@ check_c_source_compiles(
     ARCH_IS_I386
 )
 if (ARCH_IS_I386)
-    set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${FLEXVDI_VERSION}-i686")
+    set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${PARALAX_VERSION}-i686")
 else ()
-    set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${FLEXVDI_VERSION}-x86_64")
+    set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${PARALAX_VERSION}-x86_64")
 endif ()
 add_custom_target(dist
                   COMMAND git archive --prefix=${CPACK_PACKAGE_FILE_NAME}/
@@ -157,7 +158,7 @@ if (WIN32)
     endif ()
     configure_file("${PROJECT_SOURCE_DIR}/scripts/setup-tpl.nsi"
                    "${PROJECT_BINARY_DIR}/setup.nsi" @ONLY)
-    add_custom_target(installer DEPENDS flexvdi-client-bin "${PROJECT_BINARY_DIR}/src/icon.ico"
+    add_custom_target(installer DEPENDS paralax-bin "${PROJECT_BINARY_DIR}/src/icon.ico"
                       COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_installer_win.sh" ${CMAKE_INSTALL_PREFIX} ${CMAKE_BUILD_TYPE}
                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
 elseif (IOS)
@@ -165,15 +166,15 @@ elseif (IOS)
 elseif (APPLE)
     configure_file("${PROJECT_SOURCE_DIR}/scripts/Info-tpl.plist"
                    "${PROJECT_BINARY_DIR}/Info.plist" @ONLY)
-    configure_file("${PROJECT_SOURCE_DIR}/scripts/flexvdi-client.bundle"
+    configure_file("${PROJECT_SOURCE_DIR}/scripts/paralax.bundle"
                    "${PROJECT_BINARY_DIR}/${CPACK_PACKAGE_FILE_NAME}.bundle" COPYONLY)
-    add_custom_target(installer DEPENDS flexvdi-client-bin
+    add_custom_target(installer DEPENDS paralax-bin
                       COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_dmg.sh" ${CMAKE_INSTALL_PREFIX} ${CPACK_PACKAGE_FILE_NAME}
                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
 elseif (ANDROID)
-    add_custom_target(installer DEPENDS flexvdi-client-static flexvdi-client)
+    add_custom_target(installer DEPENDS paralax-static paralax)
 else ()
-    add_custom_target(installer DEPENDS flexvdi-client-bin
+    add_custom_target(installer DEPENDS paralax-bin
                       COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_appimage.sh" ${CMAKE_INSTALL_PREFIX} ${CPACK_PACKAGE_FILE_NAME} ${CMAKE_BUILD_TYPE}
                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
 endif ()

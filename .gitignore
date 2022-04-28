@@ -8,8 +8,8 @@ CTestTestfile.cmake
 cmake_install.cmake
 Makefile
 
-src/flexvdi-client
-src/libflexvdi-client.so
+src/paralax
+src/libparalax.so
 test/get_printer_ppds
 test/test_client_log
 test/test_client_request

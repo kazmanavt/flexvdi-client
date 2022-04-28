@@ -87,7 +87,7 @@ static void spice_window_class_init(SpiceWindowClass * class) {
     object_class->finalize = spice_window_finalize;
 
     gtk_widget_class_set_template_from_resource(GTK_WIDGET_CLASS(class),
-                                                "/com/flexvdi/client/spice-win.ui");
+                                                "/com/paralax/spice-win.ui");
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, revealer);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, content_box);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, toolbar);
@@ -173,9 +173,9 @@ static void spice_window_init(SpiceWindow * win) {
     g_action_map_add_action_entries(G_ACTION_MAP(win), keystroke_entry, 1, win);
     GtkBuilder * builder = gtk_builder_new_from_resource(
 #ifdef WIN32
-        "/com/flexvdi/client/keys-menu-windows.ui"
+        "/com/paralax/keys-menu-windows.ui"
 #else
-        "/com/flexvdi/client/keys-menu-linux.ui"
+        "/com/paralax/keys-menu-linux.ui"
 #endif
     );
     GMenuModel * keys_menu = G_MENU_MODEL(gtk_builder_get_object(builder, "menu"));

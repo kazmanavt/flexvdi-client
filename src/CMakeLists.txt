@@ -34,17 +34,17 @@ else ()
     set(ICON "")
 endif ()
 
-add_definitions(-DG_LOG_DOMAIN=\"flexvdi\" -DVERSION_STRING=\"${FLEXVDI_VERSION}\")
+add_definitions(-DG_LOG_DOMAIN=\"paralax\" -DVERSION_STRING=\"${PARALAX_VERSION}\")
 
-# libflexvdi-client
-add_library(flexvdi-client SHARED ${LIB_SOURCES})
-target_link_libraries(flexvdi-client ${LIB_LIBRARIES})
-set_target_properties(flexvdi-client PROPERTIES PUBLIC_HEADER "${LIB_HEADERS}")
+# libparalax
+add_library(paralax SHARED ${LIB_SOURCES})
+target_link_libraries(paralax ${LIB_LIBRARIES})
+set_target_properties(paralax PROPERTIES PUBLIC_HEADER "${LIB_HEADERS}")
 if (APPLE)
-    target_compile_options(flexvdi-client PRIVATE -xobjective-c -mmacosx-version-min=10.10)
-    target_link_libraries(flexvdi-client "-framework Cocoa")
+    target_compile_options(paralax PRIVATE -xobjective-c -mmacosx-version-min=10.10)
+    target_link_libraries(paralax "-framework Cocoa")
 elseif (ANDROID)
-    target_link_libraries(flexvdi-client "-llog -lm")
+    target_link_libraries(paralax "-llog -lm")
 endif ()
 
 if (NOT ANDROID AND NOT IOS)
@@ -57,32 +57,32 @@ if (APPLE)
 endif ()
 
 # main binary
-add_executable(flexvdi-client-bin WIN32 main.c ${ICON} $<TARGET_OBJECTS:client_objects>
+add_executable(paralax-bin WIN32 main.c ${ICON} $<TARGET_OBJECTS:client_objects>
                $<TARGET_OBJECTS:resource_objects>)
-set_target_properties(flexvdi-client-bin
-                      PROPERTIES OUTPUT_NAME flexvdi-client)
+set_target_properties(paralax-bin
+                      PROPERTIES OUTPUT_NAME paralax)
 if (WIN32)
-    add_dependencies(flexvdi-client-bin ico_icon)
+    add_dependencies(paralax-bin ico_icon)
 elseif (APPLE)
-    target_link_libraries(flexvdi-client-bin "-framework Cocoa")
+    target_link_libraries(paralax-bin "-framework Cocoa")
 endif ()
-target_link_libraries(flexvdi-client-bin flexvdi-client ${CLIENT_LIBRARIES} m)
+target_link_libraries(paralax-bin paralax ${CLIENT_LIBRARIES} m)
 
-install(TARGETS flexvdi-client-bin flexvdi-client
+install(TARGETS paralax-bin paralax
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
-        PUBLIC_HEADER DESTINATION include/flexvdi-client)
+        PUBLIC_HEADER DESTINATION include/paralax)
 
 else (NOT ANDROID AND NOT IOS)
-add_library(flexvdi-client-static STATIC ${LIB_SOURCES})
-target_link_libraries(flexvdi-client-static ${LIB_LIBRARIES})
+add_library(paralax-static STATIC ${LIB_SOURCES})
+target_link_libraries(paralax-static ${LIB_LIBRARIES})
 if (ANDROID)
-    target_link_libraries(flexvdi-client "-llog -lm")
+    target_link_libraries(paralax "-llog -lm")
 endif ()
-set_target_properties(flexvdi-client-static PROPERTIES OUTPUT_NAME flexvdi-client)
+set_target_properties(paralax-static PROPERTIES OUTPUT_NAME paralax)
 
-install(TARGETS flexvdi-client flexvdi-client-static
+install(TARGETS paralax paralax-static
         LIBRARY DESTINATION lib
-        PUBLIC_HEADER DESTINATION include/flexvdi-client)
+        PUBLIC_HEADER DESTINATION include/paralax)
 
 endif (NOT ANDROID AND NOT IOS)

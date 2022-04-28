@@ -20,8 +20,8 @@
 PREFIX="$1"
 PKG_NAME="$2"
 BUILD_TYPE="$3"
-BIN=src/flexvdi-client
-LIB=src/libflexvdi-client.so
+BIN=src/paralax
+LIB=src/libparalax.so
 export PKG_CONFIG_PATH="$PREFIX"/lib/pkgconfig:"$PREFIX"/share/pkgconfig
 
 set -e
@@ -30,12 +30,12 @@ SRCDIR=`dirname "$0"`/..
 TMPDIR=`mktemp -d`
 trap "rm -fr $TMPDIR" EXIT
 
-cat > $TMPDIR/flexvdi-client.desktop << EOF
+cat > $TMPDIR/paralax.desktop << EOF
 [Desktop Entry]
 Type=Application
-Name=flexVDI client
+Name=paralax
 Categories=Network;
-Exec=flexvdi-client
+Exec=paralax
 Icon=icon
 EOF
 cp "$SRCDIR"/resources/images/icon.png $TMPDIR
@@ -51,8 +51,8 @@ copy_with_deps() {
 }
 
 mkdir -p $TMPDIR/bin $TMPDIR/lib/gstreamer-1.0 $TMPDIR/lib/gio $TMPDIR/share/fonts
-copy_with_deps "$BIN" $TMPDIR/bin/flexvdi-client
-copy_with_deps "$LIB" $TMPDIR/lib/libflexvdi-client.so
+copy_with_deps "$BIN" $TMPDIR/bin/paralax
+copy_with_deps "$LIB" $TMPDIR/lib/libparalax.so
 # copy_with_deps $(pkg-config gstreamer-1.0 --variable pluginsdir)/libgst{app,coreelements,audioconvert,audioresample,autodetect,playback,videofilter,videoconvert,videoscale,deinterlace,pulseaudio,x264,openh264,x265,de265}.so "$TMPDIR"/lib/gstreamer-1.0
 copy_with_deps $(pkg-config gstreamer-1.0 --variable pluginsdir)/libgst{app,coreelements,audioconvert,audioresample,autodetect,playback,videofilter,videoconvert,videoscale,deinterlace,pulseaudio,x264}.so "$TMPDIR"/lib/gstreamer-1.0
 copy_with_deps $(pkg-config gstreamer-1.0 --variable pluginsdir)/gst-plugin-scanner "$TMPDIR"/bin
@@ -115,7 +115,7 @@ if [ -n "$DEBUG_APPIMAGE" ]; then
 elif [ -n "$VALGRIND_TOOL" ]; then
     ${LD_LINUX} --inhibit-cache --library-path "${LD_LIBRARY_PATH}" valgrind --tool=$VALGRIND_TOOL "${HERE}"/bin/paralax "$@"
 else
-    "${HERE}"/bin/flexvdi-client "$@"
+    "${HERE}"/bin/paralax "$@"
 fi
 EOF
 fi >> $TMPDIR/AppRun

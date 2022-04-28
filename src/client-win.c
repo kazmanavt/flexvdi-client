@@ -71,7 +71,7 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
     G_OBJECT_CLASS(class)->dispose = client_app_window_dispose;
 
     gtk_widget_class_set_template_from_resource(GTK_WIDGET_CLASS(class),
-                                                "/com/flexvdi/client/window.ui");
+                                                "/com/paralax/window.ui");
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, version);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, info);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, status);
@@ -179,7 +179,7 @@ ClientAppWindow * client_app_window_new(ClientApp * app, ClientConf * conf) {
        windows too, but it is done here because this is the first window and there is
        only one */
     GtkCssProvider * css_provider = gtk_css_provider_new();
-    gtk_css_provider_load_from_resource(css_provider, "/com/flexvdi/client/style.css");
+    gtk_css_provider_load_from_resource(css_provider, "/com/paralax/style.css");
     GdkScreen * screen = gtk_widget_get_screen(GTK_WIDGET(win));
     gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_USER + 1);
@@ -286,7 +286,7 @@ void client_app_window_load_config(ClientAppWindow * win, ClientConf * conf) {
     if (host)
         gtk_entry_set_text(win->host, host);
 
-    gtk_entry_set_text(win->port, port ? port : "443");
+    gtk_entry_set_text(win->port, port ? port : "2637");
 
     if (username)
         gtk_entry_set_text(win->username, username);

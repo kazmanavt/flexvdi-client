@@ -75,7 +75,7 @@ gboolean load_legacy_config_file(GKeyFile * new_file) {
     GError * error = NULL;
 
     g_autofree gchar * legacy_file_name =
-        g_build_filename(g_getenv("APPDATA"), "flexVDI Client 2.2", "config.xml", NULL);
+        g_build_filename(g_getenv("APPDATA"), "paralax 2.2", "config.xml", NULL);
     g_autofree gchar * contents = NULL;
     gsize length;
     if (!g_file_get_contents(legacy_file_name, &contents, &length, &error)) {

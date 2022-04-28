@@ -98,7 +98,7 @@ static void client_conf_init(ClientConf * conf) {
         { "host", 'h', 0, G_OPTION_ARG_STRING, &conf->host,
         "Connection host address", "<hostname or IP>" },
         { "port", 'p', 0, G_OPTION_ARG_STRING, &conf->port,
-        "Connection port (default 443)", "<port number>" },
+        "Connection port (default 2637)", "<port number>" },
         { "proxy-uri", 0, 0, G_OPTION_ARG_CALLBACK, set_proxy_uri,
         "Use this URI to connect through a proxy server (default use system settings)", "<uri>" },
         { "username", 'u', 0, G_OPTION_ARG_STRING, &conf->username,
@@ -208,7 +208,7 @@ static void client_conf_init(ClientConf * conf) {
     conf->file = g_key_file_new();
     conf->file_name = g_build_filename(
         g_get_user_config_dir(),
-        "flexvdi-client",
+        "paralax",
         "settings.ini",
         NULL
     );
@@ -295,13 +295,12 @@ static gint client_conf_handle_options(GApplication * gapp, GVariantDict * opts,
     ClientConf * conf = CLIENT_CONF(user_data);
 
     if (g_variant_dict_contains(opts, "version")) {
-        g_print("flexVDI Client v" VERSION_STRING "\n"
-                "Copyright (C) 2018 Flexible Software Solutions S.L.\n");
+        g_print("paralax v" VERSION_STRING "\n");
         return 0;
     }
 
     // Command line parsing is finished, program starts now
-    g_message("Starting flexVDI Client v" VERSION_STRING);
+    g_message("Starting paralax v" VERSION_STRING);
 
     // Parse again the conf->arguments copy of the command line arguments,
     // just to make a list of the options that must not be loaded from file
