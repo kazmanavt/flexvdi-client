@@ -375,7 +375,7 @@ void client_conf_get_options_from_response(ClientConf * conf, JsonObject * param
     if (cc_params_has(params, "fullscreen"))
         conf->fullscreen = cc_params_get_boolean(params, "fullscreen");
     if (cc_params_has(params, "usb-filter"))
-	conf->usb_connect_filter = cc_params_get_string(params, "usb-filter");
+        conf->usb_connect_filter = cc_params_get_string(params, "usb-filter");
     if (cc_params_has(params, "enable-usb-autoshare"))
         if (cc_params_get_boolean(params, "enable-usb-autoshare"))
             conf->usb_auto_filter = cc_params_get_string(params, "usb-filter");
