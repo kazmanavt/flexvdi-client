@@ -40,22 +40,20 @@ Icon=icon
 EOF
 cp "$SRCDIR"/resources/images/icon.png $TMPDIR
 
-NOT_PREFIX_LIBS="libc|ld-linux|$NOT_PREFIX_LIBS"
-NOT_PREFIX_LIBS="libudev|libcrypt\.|$NOT_PREFIX_LIBS"
-# EXCLUDED_LIBS="libcryptoiii"
+NOT_PREFIX_LIBS="libudev|libcrypt\."
+EXCLUDED_LIBS="libcrypto"
 
 copy_with_deps() {
     cp "$@"
-    # ldd "${@:1:$#-1}" | grep "=>" | sed 's;.* => \(/.*\) (.*;\1;' | grep -E "$PREFIX|$NOT_PREFIX_LIBS" | grep -v "$EXCLUDED_LIBS" | sort -u | xargs -r cp -t $TMPDIR/lib -u
-    ldd "${@:1:$#-1}" | grep -E "=>|ld-linux" | sed -e 's;.* => \(/.*\) (.*;\1;' -e 's;\s*\(/.*\) (.*;\1;' | grep -E "$PREFIX|$NOT_PREFIX_LIBS" | sort -u | xargs -r cp -t $TMPDIR/lib -uL
+    ldd "${@:1:$#-1}" | grep "=>" | sed 's;.* => \(/.*\) (.*;\1;' | grep -E "$PREFIX|$NOT_PREFIX_LIBS" | grep -v "$EXCLUDED_LIBS" | sort -u | xargs -r cp -t $TMPDIR/lib -u
 }
 
 mkdir -p $TMPDIR/bin $TMPDIR/lib/gstreamer-1.0 $TMPDIR/lib/gio $TMPDIR/share/fonts
 copy_with_deps "$BIN" $TMPDIR/bin/paralax
 copy_with_deps "$LIB" $TMPDIR/lib/libparalax.so
-# copy_with_deps $(pkg-config gstreamer-1.0 --variable pluginsdir)/libgst{app,coreelements,audioconvert,audioresample,autodetect,playback,videofilter,videoconvert,videoscale,deinterlace,pulseaudio,x264,openh264,x265,de265}.so "$TMPDIR"/lib/gstreamer-1.0
-copy_with_deps $(pkg-config gstreamer-1.0 --variable pluginsdir)/libgst{app,coreelements,audioconvert,audioresample,autodetect,playback,videofilter,videoconvert,videoscale,deinterlace,pulseaudio,x264}.so "$TMPDIR"/lib/gstreamer-1.0
-copy_with_deps $(pkg-config gstreamer-1.0 --variable pluginsdir)/gst-plugin-scanner "$TMPDIR"/bin
+copy_with_deps $(pkg-config gstreamer-1.0 --variable pluginsdir)/libgst{app,coreelements,audioconvert,audioresample,autodetect,playback,jpeg,videofilter,videoconvert,videoscale,deinterlace,alsa,pulseaudio,x264}.so "$TMPDIR"/lib/gstreamer-1.0
+#copy_with_deps $(pkg-config gstreamer-1.0 --variable prefix)/libexec/gstreamer-1.0/gst-plugin-scanner "$TMPDIR"/bin
+copy_with_deps $(pkg-config gstreamer-1.0 --variable libdir)/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner "$TMPDIR"/bin
 copy_with_deps $(pkg-config gio-2.0 --variable giomoduledir)/libgiognutls.so "$TMPDIR"/lib/gio
 cp -a $(pkg-config gtk+-3.0 --variable libdir)/gtk-3.0 "$TMPDIR"/lib
 
@@ -77,9 +75,16 @@ HERE=$(dirname $(readlink -f "${0}"))
 if which pax11publish > /dev/null; then
     eval $(pax11publish -i)
 fi
-
+export LD_LIBRARY_PATH="${HERE}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}/share${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}"
+export GSETTINGS_SCHEMA_DIR=${HERE}/share/schemas${GSETTINGS_SCHEMA_DIR:+:$GSETTINGS_SCHEMA_DIR}
+export GST_PLUGIN_SYSTEM_PATH="${HERE}"/lib/gstreamer-1.0
+export GST_PLUGIN_SCANNER="${HERE}"/bin/gst-plugin-scanner
+export LIBVA_DRIVERS_PATH="${HERE}"/lib
+export GIO_MODULE_DIR="${HERE}"/lib/gio
+export GTK_PATH="${HERE}"/lib/gtk-3.0
 export FONTCONFIG_PATH=$(mktemp -d)
-trap "LD_PRELOAD= LD_LIBRARY_PATH= rm -fr $FONTCONFIG_PATH" EXIT INT
+trap "rm -fr $FONTCONFIG_PATH" EXIT
 cat > $FONTCONFIG_PATH/fonts.conf <<FOO
 <?xml version="1.0"?>
 <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
@@ -89,31 +94,25 @@ cat > $FONTCONFIG_PATH/fonts.conf <<FOO
 </fontconfig>
 FOO
 
-export LD_LINUX=$(find "$HERE" -name 'ld-*.so.*' | head -n 1)
+# Check dependencies are met, to avoid cryptic error messages
+ERRORS=`find "${HERE}" -type f -executable | xargs ldd | grep "not found" | sort -u`
+if [ -n "$ERRORS" ]; then
+    echo "*************************************************"
+    echo "WARNING!!! There are missing dependencies:"
+    echo "*************************************************"
+    echo "$ERRORS"
+fi
 
-export LD_LIBRARY_PATH="${HERE}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-export LD_PRELOAD=${LD_LINUX}
-export XDG_DATA_DIRS="${HERE}/share${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}"
-export GSETTINGS_SCHEMA_DIR=${HERE}/share/schemas${GSETTINGS_SCHEMA_DIR:+:$GSETTINGS_SCHEMA_DIR}
-export GST_PLUGIN_SYSTEM_PATH="${HERE}"/lib/gstreamer-1.0
-
-export GST_PLUGIN_SCANNER="${HERE}"/bin/gst-plugin-scanner
-# export GST_PLUGIN_SCANNER="${HERE}"/bin/gst-p-s
-# export GST_PLUGIN_SCANNER="${LD_LINUX} --inhibit-cache --library-path ${LD_LIBRARY_PATH} ${HERE}/bin/gst-plugin-scanner"
-
-export LIBVA_DRIVERS_PATH="${HERE}"/lib
-export GIO_MODULE_DIR="${HERE}"/lib/gio
-export GTK_PATH="${HERE}"/lib/gtk-3.0
 EOF
 
 if [ "$BUILD_TYPE" != "Debug" ]; then
-    echo '${LD_LINUX} --inhibit-cache --library-path "${LD_LIBRARY_PATH}" "${HERE}"/bin/paralax "$@"'
+    echo '"${HERE}"/bin/paralax "$@"'
 else
     cat <<\EOF
 if [ -n "$DEBUG_APPIMAGE" ]; then
-    ${LD_LINUX} --inhibit-cache --library-path "${LD_LIBRARY_PATH}" gdb --args "${HERE}"/bin/paralax "$@"
+    gdb --args "${HERE}"/bin/paralax "$@"
 elif [ -n "$VALGRIND_TOOL" ]; then
-    ${LD_LINUX} --inhibit-cache --library-path "${LD_LIBRARY_PATH}" valgrind --tool=$VALGRIND_TOOL "${HERE}"/bin/paralax "$@"
+    valgrind --tool=$VALGRIND_TOOL "${HERE}"/bin/paralax "$@"
 else
     "${HERE}"/bin/paralax "$@"
 fi
