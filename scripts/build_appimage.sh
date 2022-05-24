@@ -40,7 +40,7 @@ Icon=icon
 EOF
 cp "$SRCDIR"/resources/images/icon.png $TMPDIR
 
-NOT_PREFIX_LIBS="libudev|libcrypt\."
+NOT_PREFIX_LIBS="libudev|libcrypt|libgst|libde265|liborc|libbz2\."
 EXCLUDED_LIBS="libcrypto"
 
 copy_with_deps() {
@@ -51,7 +51,7 @@ copy_with_deps() {
 mkdir -p $TMPDIR/bin $TMPDIR/lib/gstreamer-1.0 $TMPDIR/lib/gio $TMPDIR/share/fonts
 copy_with_deps "$BIN" $TMPDIR/bin/paralax
 copy_with_deps "$LIB" $TMPDIR/lib/libparalax.so
-copy_with_deps $(pkg-config gstreamer-1.0 --variable pluginsdir)/libgst{app,coreelements,audioconvert,audioresample,autodetect,playback,jpeg,videofilter,videoconvert,videoscale,deinterlace,alsa,pulseaudio,x264}.so "$TMPDIR"/lib/gstreamer-1.0
+copy_with_deps $(pkg-config gstreamer-1.0 --variable pluginsdir)/libgst{app,coreelements,audioconvert,audioresample,autodetect,playback,jpeg,videofilter,videoconvert,videoscale,deinterlace,alsa,pulseaudio,de265}.so "$TMPDIR"/lib/gstreamer-1.0
 #copy_with_deps $(pkg-config gstreamer-1.0 --variable prefix)/libexec/gstreamer-1.0/gst-plugin-scanner "$TMPDIR"/bin
 copy_with_deps $(pkg-config gstreamer-1.0 --variable libdir)/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner "$TMPDIR"/bin
 copy_with_deps $(pkg-config gio-2.0 --variable giomoduledir)/libgiognutls.so "$TMPDIR"/lib/gio
