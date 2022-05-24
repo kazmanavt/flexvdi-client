@@ -447,7 +447,7 @@ void client_conf_set_session_options(ClientConf * conf, SpiceSession * session) 
         SpiceUsbDeviceManager * mgr = spice_usb_device_manager_get(session, NULL);
         if (mgr) {
             if (conf->usb_auto_filter) {
-                g_object_set(mgr, "auto-connect", TRUE, NULL);
+                //g_object_set(mgr, "auto-connect", TRUE, NULL);
                 g_object_set(mgr, "auto-connect-filter", conf->usb_auto_filter, NULL);
             }
         } else {
