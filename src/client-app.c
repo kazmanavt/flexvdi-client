@@ -784,7 +784,7 @@ static void desktop_request_uds_cb(ClientRequest * req, gpointer user_data) {
 	    if (app->ticket) g_free(app->ticket);
 	    if (app->scrambler) g_free(app->scrambler);
             app->ticket = g_strdup(json_object_get_string_member(response, "ticket"));
-            app->scrambler = g_strdup(json_object_get_string_member(response, "scrampler"));
+            app->scrambler = g_strdup(json_object_get_string_member(response, "scrambler"));
             client_app_request_desktop_uds_p2(app);
 
         } else invalid = TRUE;
@@ -1053,7 +1053,7 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
             } else {
                 g_object_get(client_conn_get_session(app->connection), "name", &name, NULL);
             }
-            g_autofree gchar * title = g_strdup_printf("%s - flexVDI Client", name);
+            g_autofree gchar * title = g_strdup_printf("%s - Paralax", name);
             SpiceWindow * win = spice_window_new(app->connection, display, app->conf, i, title);
             // Inform GTK that this is an application window
             gtk_application_add_window(GTK_APPLICATION(app), GTK_WINDOW(win));
